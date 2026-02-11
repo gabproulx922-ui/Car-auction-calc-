@@ -10,7 +10,7 @@ import AuthCard from "@/components/AuthCard";
 import type { CalcResult, DealInput, DecodedVehicle, LadderRow } from "@/lib/types";
 import { computeMaxBid, profitLadder } from "@/lib/bid_engine";
 import { saveDeal } from "@/lib/deal_queue_local";
-import { upsertDealToSupabase } from "@/lib/deal_queue_supabase";
+import { insertDealToSupabase } from "@/lib/deal_queue_supabase";
 import { supabase } from "@/lib/supabaseClient";
 
 function uid() {
@@ -82,22 +82,22 @@ export default function Page() {
     };
 
     // If signed in → cloud, else local
-    const { data } = await supabase.auth.getSession();
-    const signedIn = Boolean(data.session?.user);
-
     try {
-      if (signedIn) {
-        await upsertDealToSupabase(deal);
-        alert("Deal sauvegardé ✅ (Supabase cloud)");
-      } else {
-        saveDeal(deal);
-        alert("Deal sauvegardé ✅ (localStorage)");
+      if (supabase) {
+        const { data } = await supabase.auth.getSession();
+        const signedIn = Boolean(data.session?.user);
+        if (signedIn) {
+          await insertDealToSupabase(deal);
+          alert("Deal sauvegardé ✅ (Supabase cloud)");
+          return;
+        }
       }
     } catch {
-      // fallback to local
-      saveDeal(deal);
-      alert("Supabase indisponible → sauvegarde locale ✅");
+      // ignore and fallback
     }
+
+    saveDeal(deal);
+    alert("Deal sauvegardé ✅ (localStorage)");
   }
 
   return (

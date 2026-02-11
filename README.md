@@ -104,4 +104,4 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
 On Vercel: add the same env vars.
 
 ---
-If env vars are missing, the app still works in localStorage mode.
+If env vars are missing, the app still builds and works in localStorage mode (Supabase UI will show a configuration hint).

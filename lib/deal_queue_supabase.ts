@@ -13,8 +13,15 @@ export type SupaDealRow = {
   notes: string | null;
 };
 
-export async function upsertDealToSupabase(deal: SavedDeal) {
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
+function requireSupabase() {
+  if (!supabase) throw new Error("Supabase not configured");
+  return supabase;
+}
+
+export async function insertDealToSupabase(deal: SavedDeal) {
+  const sb = requireSupabase();
+
+  const { data: userData, error: userErr } = await sb.auth.getUser();
   if (userErr || !userData.user) throw new Error("Not signed in");
 
   const payload = {
@@ -26,16 +33,17 @@ export async function upsertDealToSupabase(deal: SavedDeal) {
     notes: deal.notes || null,
   };
 
-  // Insert a new row (id generated server-side)
-  const { error } = await supabase.from("deals").insert(payload);
+  const { error } = await sb.from("deals").insert(payload);
   if (error) throw error;
 }
 
 export async function listDealsFromSupabase(limit = 100): Promise<SavedDeal[]> {
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  const sb = requireSupabase();
+
+  const { data: userData, error: userErr } = await sb.auth.getUser();
   if (userErr || !userData.user) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from("deals")
     .select("*")
     .order("created_at", { ascending: false })
@@ -56,6 +64,7 @@ export async function listDealsFromSupabase(limit = 100): Promise<SavedDeal[]> {
 }
 
 export async function deleteDealFromSupabase(id: string) {
-  const { error } = await supabase.from("deals").delete().eq("id", id);
+  const sb = requireSupabase();
+  const { error } = await sb.from("deals").delete().eq("id", id);
   if (error) throw error;
 }

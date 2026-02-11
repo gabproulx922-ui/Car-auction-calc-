@@ -17,6 +17,10 @@ export default function DealQueueCard({ currency }: Props) {
   const [cloudStatus, setCloudStatus] = useState<"idle" | "loading" | "error">("idle");
 
   async function refreshMode() {
+    if (!supabase) {
+      setMode("local");
+      return;
+    }
     const { data } = await supabase.auth.getSession();
     const signedIn = Boolean(data.session?.user);
     setMode(signedIn ? "cloud" : "local");
@@ -24,6 +28,11 @@ export default function DealQueueCard({ currency }: Props) {
 
   async function refreshDeals() {
     await refreshMode();
+
+    if (!supabase) {
+      setDeals(loadDeals());
+      return;
+    }
 
     const { data } = await supabase.auth.getSession();
     const signedIn = Boolean(data.session?.user);
@@ -45,6 +54,7 @@ export default function DealQueueCard({ currency }: Props) {
 
   useEffect(() => {
     refreshDeals();
+    if (!supabase) return;
     const { data: sub } = supabase.auth.onAuthStateChange(() => refreshDeals());
     return () => { sub.subscription.unsubscribe(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,7 +76,6 @@ export default function DealQueueCard({ currency }: Props) {
 
   async function wipe() {
     if (mode === "cloud") {
-      // For safety in MVP, we don't bulk-delete cloud deals.
       alert("Pour le mode cloud, supprime deal par deal (MVP).");
       return;
     }
