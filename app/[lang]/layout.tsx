@@ -1,13 +1,14 @@
 import { notFound } from "next/navigation";
 
-export default function LangLayout({
+export default async function LangLayout({
   children,
   params,
 }: {
   children: React.ReactNode;
-  params: { lang: string };
+  params: Promise<{ lang: string }>;
 }) {
-  const lang = params.lang;
+  const { lang } = await params;
+
   if (lang !== "fr" && lang !== "en") notFound();
   return <>{children}</>;
 }
