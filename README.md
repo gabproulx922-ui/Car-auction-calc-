@@ -57,3 +57,51 @@ Then replace localStorage with Supabase inserts/selects.
 - This MVP uses **Copart Canada** fee tables only.
 - Taxes are simplified and configurable (sale-only vs sale+fees).
 - Storage/late/relist fees are not included (they depend on timing/location).
+
+## 6) Supabase setup (Auth + Deals sync)
+
+### A) Create project
+- Create a Supabase project
+- Enable Email (OTP / magic link) auth
+- Add Redirect URLs: `http://localhost:3000` and your Vercel domain
+
+### B) Create table + RLS
+Run this in Supabase SQL editor:
+
+```sql
+create table if not exists deals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid(),
+  created_at timestamptz not null default now(),
+  vin text not null,
+  decoded jsonb,
+  input jsonb not null,
+  result jsonb not null,
+  ladder jsonb not null,
+  notes text
+);
+
+alter table deals enable row level security;
+
+create policy "deals_select_own" on deals
+  for select using (auth.uid() = user_id);
+
+create policy "deals_insert_own" on deals
+  for insert with check (auth.uid() = user_id);
+
+create policy "deals_delete_own" on deals
+  for delete using (auth.uid() = user_id);
+```
+
+### C) Env vars
+Create `.env.local`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=YOUR_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+```
+
+On Vercel: add the same env vars.
+
+---
+If env vars are missing, the app still works in localStorage mode.

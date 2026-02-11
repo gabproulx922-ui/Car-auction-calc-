@@ -5,13 +5,15 @@ import SettingsPanel from "@/components/SettingsPanel";
 import VinLookupCard from "@/components/VinLookupCard";
 import BidEngineCard from "@/components/BidEngineCard";
 import DealQueueCard from "@/components/DealQueueCard";
+import AuthCard from "@/components/AuthCard";
 
 import type { CalcResult, DealInput, DecodedVehicle, LadderRow } from "@/lib/types";
 import { computeMaxBid, profitLadder } from "@/lib/bid_engine";
 import { saveDeal } from "@/lib/deal_queue_local";
+import { upsertDealToSupabase } from "@/lib/deal_queue_supabase";
+import { supabase } from "@/lib/supabaseClient";
 
 function uid() {
-  // simple unique id for localStorage
   return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
 }
 
@@ -40,15 +42,12 @@ export default function Page() {
   }, [input]);
 
   function recalc() {
-    // MVP assumes all amounts are in the selected display currency.
-    // (When you later add US region, you can convert bid->CAD for CA fee tables, etc.)
     const r = computeMaxBid(input);
     setResult(r);
     setLadder(profitLadder(baseForLadder));
   }
 
   useEffect(() => {
-    // compute initial ladder
     setLadder(profitLadder(baseForLadder));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -69,8 +68,9 @@ export default function Page() {
     }
   }
 
-  function saveToQueue() {
+  async function saveToQueue() {
     if (!result) return;
+
     const deal = {
       id: uid(),
       createdAt: new Date().toISOString(),
@@ -80,8 +80,24 @@ export default function Page() {
       result,
       ladder,
     };
-    saveDeal(deal);
-    alert("Deal sauvegardé ✅ (Deal Queue)");
+
+    // If signed in → cloud, else local
+    const { data } = await supabase.auth.getSession();
+    const signedIn = Boolean(data.session?.user);
+
+    try {
+      if (signedIn) {
+        await upsertDealToSupabase(deal);
+        alert("Deal sauvegardé ✅ (Supabase cloud)");
+      } else {
+        saveDeal(deal);
+        alert("Deal sauvegardé ✅ (localStorage)");
+      }
+    } catch {
+      // fallback to local
+      saveDeal(deal);
+      alert("Supabase indisponible → sauvegarde locale ✅");
+    }
   }
 
   return (
@@ -93,6 +109,7 @@ export default function Page() {
 
       <div className="grid" style={{ gridTemplateColumns: "1fr", marginTop: 14 }}>
         <SettingsPanel input={input} setInput={setInput} fxStatus={fxStatus} fetchFx={fetchFx} />
+        <AuthCard />
         <div className="grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
           <VinLookupCard decoded={decoded} setDecoded={setDecoded} vin={vin} setVin={setVin} />
           <BidEngineCard
@@ -111,7 +128,7 @@ export default function Page() {
         <div><b>Notes MVP</b></div>
         <div>• Les tables de frais Copart Canada sont intégrées en dur (Gate 79$, Env 10$, Virtual Bid Fee + Bidding Fees).</div>
         <div>• Les “Other fees” (storage, late, relist, etc.) ne sont pas inclus dans le calcul automatique.</div>
-        <div>• Supabase (login + sync) est le prochain upgrade.</div>
+        <div>• Deal Queue: localStorage par défaut, et sync Supabase si tu te connectes.</div>
       </div>
     </main>
   );
