@@ -105,3 +105,14 @@ On Vercel: add the same env vars.
 
 ---
 If env vars are missing, the app still builds and works in localStorage mode (Supabase UI will show a configuration hint).
+
+
+## 7) Bilingual URLs (/fr and /en) + remember language
+
+- Visit `/fr` or `/en` to choose language.
+- A cookie `lang` is set automatically.
+- Visiting `/` redirects to the saved language, otherwise it uses the browser language (Accept-Language).
+
+Files:
+- `middleware.ts` handles redirects + cookie
+- `app/[lang]/page.tsx` renders the UI
