@@ -32,12 +32,12 @@ export default function VinLookupCard({ t, vin, setVin, decoded, setDecoded }: P
     try {
       const res = await fetch(`/api/vin?vin=${encodeURIComponent(v)}`, { cache: "no-store" });
       const data = await res.json();
-      if (!res.ok || !data?.ok) {
+      if (!res.ok || !data?.ok || !(data.vehicle || data.decoded)) {
         setStatus("error");
         setDecoded(null);
         return;
       }
-      setDecoded(data.vehicle);
+      setDecoded((data.vehicle ?? data.decoded) as any);
       setStatus("ok");
     } catch {
       setStatus("error");
