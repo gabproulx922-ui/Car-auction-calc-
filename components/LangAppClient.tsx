@@ -52,7 +52,7 @@ export default function LangAppClient({ lang }: { lang: Lang }) {
   const [ladder, setLadder] = useState<LadderRow[]>([]);
 
   const baseForLadder = useMemo(() => {
-    const { targetProfit, ...rest } = input;
+    const { profitPct, ...rest } = input;
     return rest;
   }, [input]);
 

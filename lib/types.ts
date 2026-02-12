@@ -13,25 +13,31 @@ export type TaxConfig = {
 };
 
 export type FeeConfig = {
-  region: Region;              // MVP: CA implemented; US stubbed
-  payment: PaymentSecurity;    // default SECURED
-  bidMode: BidMode;            // default PRE_BID
+  region: Region; // MVP: CA implemented; US stubbed
+  payment: PaymentSecurity; // default SECURED
+  bidMode: BidMode; // default PRE_BID
 };
 
 export type DealInput = {
-  currency: Currency;          // display currency
-  fxUSDCAD: number;            // 1 USD -> CAD (used when converting)
+  currency: Currency; // display currency
+  fxUSDCAD: number; // 1 USD -> CAD (used when converting)
   fee: FeeConfig;
   tax: TaxConfig;
 
-  exitValue: number;           
+  // exit value in DISPLAY currency (auto-estimated)
+  exitValue: number;
+
+  // guided inputs
   mileageKm: number;
-  conditionGrade: \"A\" | \"B\" | \"C\" | \"D\";
-// exit value in DISPLAY currency
+  conditionGrade: "A" | "B" | "C" | "D";
+
+  // fixed costs in DISPLAY currency
   partsCost: number;
   transportCost: number;
-  timeCost: number;          // repair + transport + misc in DISPLAY currency
-  profitPct: number;        // profit target in DISPLAY currency
+  timeCost: number;
+
+  // profit target as % of exit value (e.g. 0.2 for 20%)
+  profitPct: number;
 };
 
 export type DecodedVehicle = {
@@ -68,8 +74,8 @@ export type CalcResult = {
 
 export type LadderRow = {
   profitPct: number;
-  targetProfit: number;
+  profitTarget: number;
   maxBid: number;
-  totalFees: number;
-  totalTaxes: number;
+  fees: number;
+  taxes: number;
 };
