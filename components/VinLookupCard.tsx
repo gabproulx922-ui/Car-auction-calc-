@@ -72,7 +72,7 @@ export default function VinLookupCard({ t, vin, setVin, decoded, setDecoded }: P
               {decoded.bodyClass ? `Body: ${decoded.bodyClass}` : null}
             </div>
             <div className="muted" style={{ marginTop: 6 }}>
-              {decoded.fuelType ? `Fuel: ${decoded.fuelType}` : null}
+              {(decoded.fuelType || (decoded as any).fuelTypePrimary) ? `Fuel: ${(decoded.fuelType || (decoded as any).fuelTypePrimary)}` : null}
             </div>
           </div>
         ) : (

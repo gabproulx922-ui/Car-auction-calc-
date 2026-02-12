@@ -48,7 +48,7 @@ export type DecodedVehicle = {
   trim: string;
   bodyClass: string;
   driveType: string;
-  engine: { cylinders: string; displacementL: string; fuelType: string };
+  engine: { cylinders: string; displacementL: string; fuelType?: string };
 };
 
 export type FeeBreakdown = {
