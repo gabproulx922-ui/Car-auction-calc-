@@ -6,12 +6,18 @@ import type { Currency } from "@/lib/types";
 import { deleteDeal, loadDeals, SavedDeal, clearDeals } from "@/lib/deal_queue_local";
 import { supabase } from "@/lib/supabaseClient";
 import { deleteDealFromSupabase, listDealsFromSupabase } from "@/lib/deal_queue_supabase";
+import type { TDict } from "@/lib/i18n";
 
 type Props = {
+  t: TDict;
   currency: Currency;
 };
 
-export default function DealQueueCard({ currency }: Props) {
+function isFR(t: TDict) {
+  return t.notesTitle === "Notes MVP";
+}
+
+export default function DealQueueCard({ t, currency }: Props) {
   const [deals, setDeals] = useState<SavedDeal[]>([]);
   const [mode, setMode] = useState<"local" | "cloud">("local");
   const [cloudStatus, setCloudStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -76,7 +82,7 @@ export default function DealQueueCard({ currency }: Props) {
 
   async function wipe() {
     if (mode === "cloud") {
-      alert("Pour le mode cloud, supprime deal par deal (MVP).");
+      alert(isFR(t) ? "Pour le mode cloud, supprime deal par deal (MVP)." : "Cloud mode: delete deals one by one (MVP).");
       return;
     }
     clearDeals();
@@ -87,22 +93,22 @@ export default function DealQueueCard({ currency }: Props) {
     <div className="card">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>Deal Queue</div>
+          <div style={{ fontWeight: 800, fontSize: 16 }}>{t.dealQueueTitle}</div>
           <div className="muted" style={{ fontSize: 13 }}>
-            Mode: <b>{mode === "cloud" ? "Supabase (cloud)" : "localStorage"}</b>
+            {t.mode}: <b>{mode === "cloud" ? "Supabase (cloud)" : "localStorage"}</b>
             {mode === "cloud" && cloudStatus === "loading" ? " · sync..." : ""}
-            {mode === "cloud" && cloudStatus === "error" ? " · erreur sync" : ""}
+            {mode === "cloud" && cloudStatus === "error" ? " · error" : ""}
           </div>
         </div>
         <div className="row">
           <span className="pill">{sorted.length} deals</span>
-          <button onClick={refreshDeals}>Refresh</button>
-          <button onClick={wipe} disabled={sorted.length === 0 || mode === "cloud"}>Clear</button>
+          <button onClick={refreshDeals}>{t.refresh}</button>
+          <button onClick={wipe} disabled={sorted.length === 0 || mode === "cloud"}>{t.clear}</button>
         </div>
       </div>
 
       {sorted.length === 0 ? (
-        <div className="muted" style={{ marginTop: 12 }}>Aucun deal sauvegardé.</div>
+        <div className="muted" style={{ marginTop: 12 }}>{t.noDeals}</div>
       ) : (
         <div style={{ marginTop: 10, overflowX: "auto" }}>
           <table>
@@ -110,8 +116,8 @@ export default function DealQueueCard({ currency }: Props) {
               <tr>
                 <th>Date</th>
                 <th>VIN</th>
-                <th>Véhicule</th>
-                <th>Max bid</th>
+                <th>{isFR(t) ? "Véhicule" : "Vehicle"}</th>
+                <th>{t.colMaxBid}</th>
                 <th></th>
               </tr>
             </thead>
@@ -126,7 +132,7 @@ export default function DealQueueCard({ currency }: Props) {
                       : <span className="muted">—</span>}
                   </td>
                   <td style={{ fontWeight: 900 }}>{fmt(d.result.maxBid, currency)}</td>
-                  <td><button onClick={() => del(d.id)}>Delete</button></td>
+                  <td><button onClick={() => del(d.id)}>{t.delete}</button></td>
                 </tr>
               ))}
             </tbody>
