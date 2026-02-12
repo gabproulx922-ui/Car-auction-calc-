@@ -13,44 +13,20 @@ import { computeMaxBid, profitLadder } from "@/lib/bid_engine";
 import { saveDeal } from "@/lib/deal_queue_local";
 import { insertDealToSupabase } from "@/lib/deal_queue_supabase";
 import { supabase } from "@/lib/supabaseClient";
+import { t as tt, type Lang } from "@/lib/i18n";
+import { estimateExitValue } from "@/lib/estimate_exit_value";
 
-const dict = {
-  fr: {
-    title: "Copart BidCalc (MVP)",
-    subtitle:
-      "Décodage VIN + frais Copart Canada (Pre-bid/Secured) + taxes QC + profit ladder + Deal Queue",
-    savedLocal: "Deal sauvegardé ✅ (localStorage)",
-    savedCloud: "Deal sauvegardé ✅ (Supabase cloud)",
-    notesTitle: "Notes MVP",
-    notes1:
-      "• Les tables de frais Copart Canada sont intégrées en dur (Gate 79$, Env 10$, Virtual Bid Fee + Bidding Fees).",
-    notes2:
-      "• Les “Other fees” (storage, late, relist, etc.) ne sont pas inclus dans le calcul automatique.",
-    notes3:
-      "• Deal Queue: localStorage par défaut, et sync Supabase si tu te connectes.",
-  },
-  en: {
-    title: "Copart BidCalc (MVP)",
-    subtitle:
-      "VIN decode + Copart Canada fees (Pre-bid/Secured) + QC taxes + profit ladder + Deal Queue",
-    savedLocal: "Saved ✅ (localStorage)",
-    savedCloud: "Saved ✅ (Supabase cloud)",
-    notesTitle: "MVP notes",
-    notes1:
-      "• Copart Canada fee tables are hard-coded (Gate $79, Env $10, Virtual Bid Fee + Bidding Fees).",
-    notes2:
-      "• Other fees (storage, late, relist, etc.) are not included in the calculation.",
-    notes3:
-      "• Deal Queue uses localStorage by default, and syncs to Supabase when signed in.",
-  },
+const subtitles = {
+  fr: "Décodage VIN + frais Copart Canada (Pre-bid/Secured) + taxes QC + profit ladder + Deal Queue",
+  en: "VIN decode + Copart Canada fees (Pre-bid/Secured) + QC taxes + profit ladder + Deal Queue",
 } as const;
 
 function uid() {
   return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
 }
 
-export default function LangAppClient({ lang }: { lang: "fr" | "en" }) {
-  const t = dict[lang];
+export default function LangAppClient({ lang }: { lang: Lang }) {
+  const tr = tt(lang);
   const other = lang === "fr" ? "en" : "fr";
 
   const [vin, setVin] = useState("");
@@ -61,7 +37,7 @@ export default function LangAppClient({ lang }: { lang: "fr" | "en" }) {
     fxUSDCAD: 1.35,
     fee: { region: "CA", bidMode: "PRE_BID", payment: "SECURED" },
     tax: { province: "QC", apply: true, taxBase: "SALE_ONLY" },
-    exitValue: 0,
+    exitValue: 12000, // auto-estimated
     fixedCosts: 0,
     targetProfit: 1500,
   });
@@ -75,6 +51,11 @@ export default function LangAppClient({ lang }: { lang: "fr" | "en" }) {
     const { targetProfit, ...rest } = input;
     return rest;
   }, [input]);
+
+  // Auto-estimate exit value when VIN/currency/fx changes
+  useEffect(() => {
+    setInput((prev) => ({ ...prev, exitValue: estimateExitValue(decoded, prev.currency, prev.fxUSDCAD) }));
+  }, [decoded, input.currency, input.fxUSDCAD]);
 
   function recalc() {
     const r = computeMaxBid(input);
@@ -122,14 +103,14 @@ export default function LangAppClient({ lang }: { lang: "fr" | "en" }) {
         const signedIn = Boolean(data.session?.user);
         if (signedIn) {
           await insertDealToSupabase(deal);
-          alert(t.savedCloud);
+          alert(lang === "fr" ? "Deal sauvegardé ✅ (Supabase cloud)" : "Saved ✅ (Supabase cloud)");
           return;
         }
       }
     } catch {}
 
     saveDeal(deal);
-    alert(t.savedLocal);
+    alert(lang === "fr" ? "Deal sauvegardé ✅ (localStorage)" : "Saved ✅ (localStorage)");
   }
 
   return (
@@ -138,31 +119,42 @@ export default function LangAppClient({ lang }: { lang: "fr" | "en" }) {
         <Link className="pill" href={`/${other}`}>{other.toUpperCase()}</Link>
       </div>
 
-      <h1 className="title">{t.title}</h1>
-      <p className="subtitle">{t.subtitle}</p>
+      <h1 className="title">Copart BidCalc (MVP)</h1>
+      <p className="subtitle">{subtitles[lang]}</p>
 
       <div className="grid" style={{ gridTemplateColumns: "1fr", marginTop: 14 }}>
-        <SettingsPanel input={input} setInput={setInput} fxStatus={fxStatus} fetchFx={fetchFx} />
-        <AuthCard />
+        <SettingsPanel t={tr} input={input} setInput={setInput} fxStatus={fxStatus} fetchFx={fetchFx} />
+        <AuthCard t={tr} />
         <div className="grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
-          <VinLookupCard decoded={decoded} setDecoded={setDecoded} vin={vin} setVin={setVin} />
+          <VinLookupCard t={tr} decoded={decoded} setDecoded={setDecoded} vin={vin} setVin={setVin} />
           <BidEngineCard
+            t={tr}
             input={input}
             setInput={setInput}
+            decoded={decoded}
             result={result}
             ladder={ladder}
             onRecalc={recalc}
             onSave={saveToQueue}
           />
         </div>
-        <DealQueueCard currency={input.currency} />
+        <DealQueueCard t={tr} currency={input.currency} />
       </div>
 
       <div className="muted" style={{ marginTop: 14, fontSize: 12, lineHeight: 1.5 }}>
-        <div><b>{t.notesTitle}</b></div>
-        <div>{t.notes1}</div>
-        <div>{t.notes2}</div>
-        <div>{t.notes3}</div>
+        <div><b>{tr.notesTitle}</b></div>
+        <div>• {lang === "fr"
+          ? "Les tables de frais Copart Canada sont intégrées en dur (Gate 79$, Env 10$, Virtual Bid Fee + Bidding Fees)."
+          : "Copart Canada fee tables are hard-coded (Gate $79, Env $10, Virtual Bid Fee + Bidding Fees)."}
+        </div>
+        <div>• {lang === "fr"
+          ? "Les “Other fees” (storage, late, relist, etc.) ne sont pas inclus dans le calcul automatique."
+          : "Other fees (storage, late, relist, etc.) are not included in the calculation."}
+        </div>
+        <div>• {lang === "fr"
+          ? "Deal Queue: localStorage par défaut, et sync Supabase si tu te connectes."
+          : "Deal Queue uses localStorage by default, and syncs to Supabase when signed in."}
+        </div>
       </div>
     </main>
   );

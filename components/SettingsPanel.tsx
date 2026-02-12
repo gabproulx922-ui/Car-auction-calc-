@@ -1,126 +1,141 @@
 "use client";
 
-import { Currency, DealInput } from "@/lib/types";
+import type { DealInput } from "@/lib/types";
+import type { TDict } from "@/lib/i18n";
 
 type Props = {
+  t: TDict;
   input: DealInput;
-  setInput: (next: DealInput) => void;
-
+  setInput: (fn: (prev: DealInput) => DealInput) => void;
   fxStatus: "idle" | "loading" | "ok" | "error";
   fetchFx: () => Promise<void>;
 };
 
-export default function SettingsPanel({ input, setInput, fxStatus, fetchFx }: Props) {
-  const currency: Currency = input.currency;
+function isFR(t: TDict) {
+  return t.notesTitle === "Notes MVP";
+}
 
+function taxBaseLabel(t: TDict, key: "SALE_ONLY" | "SALE_PLUS_FEES") {
+  if (isFR(t)) return key === "SALE_ONLY" ? "Vente seulement" : "Vente + frais";
+  return key === "SALE_ONLY" ? "Sale only" : "Sale + fees";
+}
+
+function bidModeLabel(t: TDict, key: "PRE_BID" | "LIVE_BID") {
+  if (isFR(t)) return key === "PRE_BID" ? "Pre-bid" : "Live-bid";
+  return key === "PRE_BID" ? "Pre-bid" : "Live-bid";
+}
+
+function paymentLabel(t: TDict, key: "SECURED" | "UNSECURED") {
+  if (isFR(t)) return key === "SECURED" ? "Secured" : "Unsecured";
+  return key === "SECURED" ? "Secured" : "Unsecured";
+}
+
+export default function SettingsPanel({ t, input, setInput, fxStatus, fetchFx }: Props) {
   return (
     <div className="card">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>Settings</div>
-          <div className="muted" style={{ fontSize: 13 }}>
-            Default: Copart Canada • Pre-bid • Secured • Québec taxes
-          </div>
+          <div style={{ fontWeight: 800, fontSize: 16 }}>{t.settingsTitle}</div>
+          <div className="muted" style={{ fontSize: 13 }}>{t.settingsSubtitle}</div>
         </div>
         <span className="pill">MVP</span>
       </div>
 
-      <div className="grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginTop: 12 }}>
-        <label>
-          Devise
+      <div className="grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginTop: 12 }}>
+        <div>
+          <label>{t.currency}</label>
           <select
-            value={currency}
-            onChange={(e) => setInput({ ...input, currency: e.target.value as Currency })}
-            style={{ width: "100%" }}
+            value={input.currency}
+            onChange={(e) => setInput((p) => ({ ...p, currency: e.target.value as any }))}
           >
             <option value="CAD">CAD</option>
             <option value="USD">USD</option>
           </select>
-        </label>
+        </div>
 
-        <label>
-          FX (1 USD → CAD)
+        <div>
+          <label>{t.fx}</label>
           <input
-            type="number"
-            step="0.0001"
-            value={input.fxUSDCAD}
-            onChange={(e) => setInput({ ...input, fxUSDCAD: Number(e.target.value) || 1 })}
-            style={{ width: "100%" }}
+            value={String(input.fxUSDCAD ?? "")}
+            onChange={(e) => setInput((p) => ({ ...p, fxUSDCAD: Number(e.target.value) || 0 }))}
+            placeholder="1.35"
           />
-        </label>
+        </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "end" }}>
+        <div style={{ display: "flex", alignItems: "flex-end" }}>
           <button onClick={fetchFx} style={{ width: "100%" }}>
-            {fxStatus === "loading" ? "Auto (chargement…)" : "Auto (BoC)"}
+            {t.fxAuto}{fxStatus === "loading" ? "…" : ""}
           </button>
         </div>
 
-        <label>
-          Province (taxes)
+        <div>
+          <label>{t.provinceTaxes}</label>
           <select
             value={input.tax.province}
-            onChange={(e) => setInput({ ...input, tax: { ...input.tax, province: e.target.value as any } })}
-            style={{ width: "100%" }}
+            onChange={(e) => setInput((p) => ({ ...p, tax: { ...p.tax, province: e.target.value as any } }))}
           >
             <option value="QC">QC</option>
-            <option value="OTHER_CA">Autre CA</option>
+            <option value="ON">ON</option>
+            <option value="BC">BC</option>
+            <option value="AB">AB</option>
+            <option value="MB">MB</option>
+            <option value="SK">SK</option>
+            <option value="NS">NS</option>
+            <option value="NB">NB</option>
+            <option value="NL">NL</option>
+            <option value="PE">PE</option>
+            <option value="YT">YT</option>
+            <option value="NT">NT</option>
+            <option value="NU">NU</option>
           </select>
-        </label>
+        </div>
+      </div>
 
-        <label>
-          Taxes
+      <div className="grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginTop: 12 }}>
+        <div>
+          <label>{t.taxes}</label>
           <select
             value={input.tax.apply ? "ON" : "OFF"}
-            onChange={(e) => setInput({ ...input, tax: { ...input.tax, apply: e.target.value === "ON" } })}
-            style={{ width: "100%" }}
+            onChange={(e) => setInput((p) => ({ ...p, tax: { ...p.tax, apply: e.target.value === "ON" } }))}
           >
             <option value="ON">ON</option>
             <option value="OFF">OFF</option>
           </select>
-        </label>
+        </div>
 
-        <label>
-          Base tax
+        <div>
+          <label>{t.taxBase}</label>
           <select
             value={input.tax.taxBase}
-            onChange={(e) => setInput({ ...input, tax: { ...input.tax, taxBase: e.target.value as any } })}
-            style={{ width: "100%" }}
+            onChange={(e) => setInput((p) => ({ ...p, tax: { ...p.tax, taxBase: e.target.value as any } }))}
           >
-            <option value="SALE_ONLY">Sale only</option>
-            <option value="SALE_PLUS_FEES">Sale + fees</option>
+            <option value="SALE_ONLY">{taxBaseLabel(t, "SALE_ONLY")}</option>
+            <option value="SALE_PLUS_FEES">{taxBaseLabel(t, "SALE_PLUS_FEES")}</option>
           </select>
-        </label>
+        </div>
 
-        <label>
-          Bid mode
+        <div>
+          <label>{t.bidMode}</label>
           <select
             value={input.fee.bidMode}
-            onChange={(e) => setInput({ ...input, fee: { ...input.fee, bidMode: e.target.value as any } })}
-            style={{ width: "100%" }}
+            onChange={(e) => setInput((p) => ({ ...p, fee: { ...p.fee, bidMode: e.target.value as any } }))}
           >
-            <option value="PRE_BID">Pre-bid</option>
-            <option value="LIVE_BID">Live bid</option>
+            <option value="PRE_BID">{bidModeLabel(t, "PRE_BID")}</option>
+            <option value="LIVE_BID">{bidModeLabel(t, "LIVE_BID")}</option>
           </select>
-        </label>
+        </div>
 
-        <label>
-          Payment
+        <div>
+          <label>{t.payment}</label>
           <select
             value={input.fee.payment}
-            onChange={(e) => setInput({ ...input, fee: { ...input.fee, payment: e.target.value as any } })}
-            style={{ width: "100%" }}
+            onChange={(e) => setInput((p) => ({ ...p, fee: { ...p.fee, payment: e.target.value as any } }))}
           >
-            <option value="SECURED">Secured</option>
-            <option value="UNSECURED">Unsecured</option>
+            <option value="SECURED">{paymentLabel(t, "SECURED")}</option>
+            <option value="UNSECURED">{paymentLabel(t, "UNSECURED")}</option>
           </select>
-        </label>
-      </div>
-
-      {fxStatus === "error" && (
-        <div className="muted" style={{ marginTop: 10 }}>
-          <span className="danger">FX auto failed.</span> Tu peux garder un taux manuel.
         </div>
-      )}
+      </div>
     </div>
   );
 }

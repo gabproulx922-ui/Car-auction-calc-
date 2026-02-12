@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
+import type { TDict } from "@/lib/i18n";
 
-export default function AuthCard() {
+function isFR(t: TDict) {
+  return t.notesTitle === "Notes MVP";
+}
+
+export default function AuthCard({ t }: { t: TDict }) {
   const configured = isSupabaseConfigured();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"unknown" | "signedout" | "signedin" | "sending" | "error">("unknown");
@@ -42,15 +47,13 @@ export default function AuthCard() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: {
-          emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
-        },
+        options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
       });
       if (error) throw error;
       setStatus("signedout");
-      alert("Lien de connexion envoyé ✅ Regarde tes emails.");
+      alert(isFR(t) ? "Lien de connexion envoyé ✅ Regarde tes emails." : "Login link sent ✅ Check your email.");
     } catch (e: any) {
-      setError(e?.message || "Erreur login");
+      setError(e?.message || (isFR(t) ? "Erreur login" : "Login error"));
       setStatus("error");
     }
   }
@@ -61,33 +64,30 @@ export default function AuthCard() {
     await refresh();
   }
 
+  const badge = status === "signedin" ? t.signedIn : t.signedOut;
+
   return (
     <div className="card">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>Supabase Sync (optionnel)</div>
-          <div className="muted" style={{ fontSize: 13 }}>
-            Connecte-toi pour synchroniser la Deal Queue. Sinon, l'app reste en localStorage.
-          </div>
+          <div style={{ fontWeight: 800, fontSize: 16 }}>{t.supabaseTitle}</div>
+          <div className="muted" style={{ fontSize: 13 }}>{t.supabaseSubtitle}</div>
         </div>
-        {status === "signedin" ? <span className="pill">Signed in</span> : <span className="pill">Signed out</span>}
+        <span className="pill">{badge}</span>
       </div>
 
       {!configured ? (
         <div className="muted" style={{ marginTop: 12 }}>
-          Supabase n'est pas configuré. Ajoute les variables d'environnement :
+          {t.supabaseMissing}
           <div style={{ marginTop: 6, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
-            NEXT_PUBLIC_SUPABASE_URL<br/>
+            NEXT_PUBLIC_SUPABASE_URL<br />
             NEXT_PUBLIC_SUPABASE_ANON_KEY
-          </div>
-          <div style={{ marginTop: 6 }}>
-            (Vercel → Project Settings → Environment Variables)
           </div>
         </div>
       ) : status === "signedin" ? (
         <div className="row" style={{ marginTop: 12 }}>
-          <div className="muted">Connecté: <b>{userEmail || "user"}</b></div>
-          <button onClick={signOut} style={{ marginLeft: "auto" }}>Sign out</button>
+          <div className="muted">Email: <b>{userEmail || "user"}</b></div>
+          <button onClick={signOut} style={{ marginLeft: "auto" }}>{t.signOut}</button>
         </div>
       ) : (
         <div style={{ marginTop: 12 }}>
@@ -95,11 +95,11 @@ export default function AuthCard() {
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email pour magic link"
+              placeholder={t.emailPlaceholder}
               style={{ flex: 1, minWidth: 260 }}
             />
             <button onClick={sendMagicLink} disabled={status === "sending" || !email}>
-              {status === "sending" ? "Envoi…" : "Envoyer le lien"}
+              {status === "sending" ? (t.sendLink + "…") : t.sendLink}
             </button>
           </div>
           {error ? <div className="muted danger" style={{ marginTop: 8 }}>{error}</div> : null}
