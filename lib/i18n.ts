@@ -35,6 +35,15 @@ export type TDict = {
 
   partsCost: string;
   transportCost: string;
+
+  transportFrom: string;
+  transportTo: string;
+  transportDistance: string;
+  transportEstimate: string;
+  transportBaseFee: string;
+  transportRate: string;
+
+  calcDistance: string;
   timeCost: string;
   profitPct: string;
 
@@ -93,6 +102,14 @@ export const I18N: Record<Lang, TDict> = {
 
     partsCost: "Pièces",
     transportCost: "Transport",
+
+    transportFrom: "Départ",
+    transportTo: "Arrivée",
+    transportDistance: "Distance (km)",
+    transportEstimate: "Estimer le transport",
+    transportBaseFee: "Frais de base",
+    transportRate: "Taux ($/km)",
+    calcDistance: "Calculer distance",
     timeCost: "Temps (main-d’œuvre)",
     profitPct: "Profit",
 
@@ -149,6 +166,14 @@ export const I18N: Record<Lang, TDict> = {
 
     partsCost: "Parts",
     transportCost: "Transport",
+
+    transportFrom: "Départ",
+    transportTo: "Arrivée",
+    transportDistance: "Distance (km)",
+    transportEstimate: "Estimer le transport",
+    transportBaseFee: "Frais de base",
+    transportRate: "Taux ($/km)",
+    calcDistance: "Calculer distance",
     timeCost: "Time cost",
     profitPct: "Profit",
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { CalcResult, DealInput, DecodedVehicle, LadderRow } from "@/lib/types";
 import { fmt } from "@/lib/currency";
 import type { TDict } from "@/lib/i18n";
@@ -26,14 +27,42 @@ function pctLabel(p: number, t: TDict) {
 }
 
 export default function BidEngineCard({ t, input, setInput, decoded, result, ladder, onRecalc, onSave }: Props) {
+  const [distStatus, setDistStatus] = useState<"idle" | "loading" | "error" | "ok">("idle");
   const estExit = estimateExitValue(decoded, input.currency, input.fxUSDCAD, input.mileageKm, input.conditionGrade);
 
-  // keep in state (no manual entry)
+  const transportEstimated =
+    (Number(input.transportBaseFee) || 0) + (Number(input.transportDistanceKm) || 0) * (Number(input.transportRatePerKm) || 0);
+
+  // keep exitValue in state (no manual entry)
   if (input.exitValue !== estExit) {
     Promise.resolve().then(() => setInput((p) => ({ ...p, exitValue: estExit })));
   }
 
+  // keep transportCost synced if estimate mode is ON
+  if (input.transportUseEstimate && input.transportCost !== Math.round(transportEstimated)) {
+    Promise.resolve().then(() => setInput((p) => ({ ...p, transportCost: Math.round(transportEstimated) })));
+  }
+
   const totalFixed = (input.partsCost || 0) + (input.transportCost || 0) + (input.timeCost || 0);
+async function calcDistance() {
+  const from = (input.transportOrigin || "").trim();
+  const to = (input.transportDestination || "").trim();
+  if (!from || !to) return;
+  setDistStatus("loading");
+  try {
+    const res = await fetch(`/api/distance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { cache: "no-store" });
+    const data = await res.json();
+    if (!res.ok || !data?.ok) {
+      setDistStatus("error");
+      return;
+    }
+    setInput((p) => ({ ...p, transportDistanceKm: Number(data.distanceKm) || 0 }));
+    setDistStatus("ok");
+  } catch {
+    setDistStatus("error");
+  }
+}
+
 
   return (
     <div className="card">
@@ -52,6 +81,28 @@ export default function BidEngineCard({ t, input, setInput, decoded, result, lad
         </div>
 
         <div>
+          <label>{t.mileage} (km)</label>
+          <input
+            value={String(input.mileageKm ?? "")}
+            onChange={(e) => setInput((p) => ({ ...p, mileageKm: Number(e.target.value) || 0 }))}
+            placeholder={isFR(t) ? "ex: 120000" : "e.g. 120000"}
+          />
+        </div>
+
+        <div>
+          <label>{t.condition}</label>
+          <select
+            value={input.conditionGrade}
+            onChange={(e) => setInput((p) => ({ ...p, conditionGrade: e.target.value as any }))}
+          >
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+          </select>
+        </div>
+
+        <div>
           <label>{t.partsCost} ({input.currency})</label>
           <input
             value={String(input.partsCost ?? "")}
@@ -61,11 +112,23 @@ export default function BidEngineCard({ t, input, setInput, decoded, result, lad
         </div>
 
         <div>
-          <label>{t.transportCost} ({input.currency})</label>
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <label>{t.transportCost} ({input.currency})</label>
+            <label className="muted" style={{ fontSize: 12 }}>
+              <input
+                type="checkbox"
+                checked={Boolean(input.transportUseEstimate)}
+                onChange={(e) => setInput((p) => ({ ...p, transportUseEstimate: e.target.checked }))}
+                style={{ marginRight: 6 }}
+              />
+              {t.transportEstimate}
+            </label>
+          </div>
           <input
             value={String(input.transportCost ?? "")}
             onChange={(e) => setInput((p) => ({ ...p, transportCost: Number(e.target.value) || 0 }))}
             placeholder={isFR(t) ? "ex: 1200" : "e.g. 1200"}
+            readOnly={Boolean(input.transportUseEstimate)}
           />
         </div>
 
@@ -75,6 +138,66 @@ export default function BidEngineCard({ t, input, setInput, decoded, result, lad
             value={String(input.timeCost ?? "")}
             onChange={(e) => setInput((p) => ({ ...p, timeCost: Number(e.target.value) || 0 }))}
             placeholder={isFR(t) ? "ex: 600" : "e.g. 600"}
+          />
+        </div>
+
+        <div>
+          <label>{t.transportFrom}</label>
+          <input
+            value={input.transportOrigin ?? ""}
+            onChange={(e) => setInput((p) => ({ ...p, transportOrigin: e.target.value }))}
+            placeholder={isFR(t) ? "ex: Montréal, QC" : "e.g. Montreal, QC"}
+          />
+        </div>
+
+        <div>
+          <label>{t.transportTo}</label>
+          <input
+            value={input.transportDestination ?? ""}
+            onChange={(e) => setInput((p) => ({ ...p, transportDestination: e.target.value }))}
+            placeholder={isFR(t) ? "ex: Sherbrooke, QC" : "e.g. Sherbrooke, QC"}
+          />
+        </div>
+
+        <div>
+  <div className="row" style={{ justifyContent: "space-between" }}>
+    <label>{t.transportDistance}</label>
+    <button
+      type="button"
+      onClick={calcDistance}
+      disabled={!input.transportOrigin?.trim() || !input.transportDestination?.trim() || distStatus === "loading"}
+      style={{ padding: "8px 10px", borderRadius: 10, fontSize: 12 }}
+    >
+      {distStatus === "loading" ? (t.calcDistance + "…") : t.calcDistance}
+    </button>
+  </div>
+  <input
+    value={String(input.transportDistanceKm ?? "")}
+    onChange={(e) => setInput((p) => ({ ...p, transportDistanceKm: Number(e.target.value) || 0 }))}
+    placeholder={isFR(t) ? "ex: 160" : "e.g. 160"}
+  />
+  {distStatus === "error" ? (
+    <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+      {isFR(t) ? "Erreur distance (vérifie ORS_API_KEY)." : "Distance error (check ORS_API_KEY)."}
+    </div>
+  ) : null}
+</div>
+
+        <div>
+          <label>{t.transportBaseFee} ({input.currency})</label>
+          <input
+            value={String(input.transportBaseFee ?? "")}
+            onChange={(e) => setInput((p) => ({ ...p, transportBaseFee: Number(e.target.value) || 0 }))}
+            placeholder={isFR(t) ? "ex: 250" : "e.g. 250"}
+          />
+        </div>
+
+        <div>
+          <label>{t.transportRate}</label>
+          <input
+            value={String(input.transportRatePerKm ?? "")}
+            onChange={(e) => setInput((p) => ({ ...p, transportRatePerKm: Number(e.target.value) || 0 }))}
+            placeholder={isFR(t) ? "ex: 1.25" : "e.g. 1.25"}
           />
         </div>
 
@@ -113,7 +236,7 @@ export default function BidEngineCard({ t, input, setInput, decoded, result, lad
         <table style={{ marginTop: 8 }}>
           <thead>
             <tr>
-              <th>{isFR(t) ? "PROFIT (%)" : "PROFIT (%)"}</th>
+              <th>PROFIT (%)</th>
               <th>{t.colProfit}</th>
               <th>{t.colMaxBid}</th>
               <th>{t.colFees}</th>

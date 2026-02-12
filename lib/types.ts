@@ -34,7 +34,14 @@ export type DealInput = {
   // fixed costs in DISPLAY currency
   partsCost: number;
   transportCost: number;
-  timeCost: number;
+  
+  transportOrigin: string;
+  transportDestination: string;
+  transportDistanceKm: number;
+  transportBaseFee: number;
+  transportRatePerKm: number;
+  transportUseEstimate: boolean;
+timeCost: number;
 
   // profit target as % of exit value (e.g. 0.2 for 20%)
   profitPct: number;

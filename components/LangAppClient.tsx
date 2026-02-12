@@ -42,6 +42,12 @@ export default function LangAppClient({ lang }: { lang: Lang }) {
     conditionGrade: "B",
     partsCost: 0,
     transportCost: 0,
+    transportOrigin: "",
+    transportDestination: "",
+    transportDistanceKm: 0,
+    transportBaseFee: 250,
+    transportRatePerKm: 1.25,
+    transportUseEstimate: true,
     timeCost: 0,
     profitPct: 0.3,
   });
