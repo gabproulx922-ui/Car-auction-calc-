@@ -2,44 +2,37 @@
 
 import { useState } from "react";
 import type { DecodedVehicle } from "@/lib/types";
-import { normalizeVin, isValidVin } from "@/lib/vin";
+import type { TDict } from "@/lib/i18n";
 
 type Props = {
-  decoded: DecodedVehicle | null;
-  setDecoded: (v: DecodedVehicle | null) => void;
+  t: TDict;
   vin: string;
   setVin: (v: string) => void;
+  decoded: DecodedVehicle | null;
+  setDecoded: (v: DecodedVehicle | null) => void;
 };
 
-export default function VinLookupCard({ decoded, setDecoded, vin, setVin }: Props) {
-  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [error, setError] = useState("");
+function isFR(t: TDict) {
+  return t.notesTitle === "Notes MVP";
+}
 
-  async function lookup() {
-    const v = normalizeVin(vin);
-    setVin(v);
-    setError("");
-    setDecoded(null);
+export default function VinLookupCard({ t, vin, setVin, decoded, setDecoded }: Props) {
+  const [status, setStatus] = useState<"idle" | "loading" | "error" | "ok">("idle");
 
-    if (!isValidVin(v)) {
-      setError("VIN invalide (17 caractères, sans I/O/Q).");
-      setStatus("error");
-      return;
-    }
-
+  async function decode() {
+    const v = vin.trim().toUpperCase();
+    if (v.length < 5) return;
     setStatus("loading");
     try {
       const res = await fetch(`/api/vin?vin=${encodeURIComponent(v)}`, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data?.error || "VIN decode error.");
         setStatus("error");
         return;
       }
-      setDecoded(data.decoded);
-      setStatus("idle");
+      setDecoded(data.vehicle);
+      setStatus("ok");
     } catch {
-      setError("Erreur réseau.");
       setStatus("error");
     }
   }
@@ -48,8 +41,8 @@ export default function VinLookupCard({ decoded, setDecoded, vin, setVin }: Prop
     <div className="card">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>1) VIN decode</div>
-          <div className="muted" style={{ fontSize: 13 }}>NHTSA vPIC (gratuit)</div>
+          <div style={{ fontWeight: 800, fontSize: 16 }}>{t.vinTitle}</div>
+          <div className="muted" style={{ fontSize: 13 }}>{t.vinSubtitle}</div>
         </div>
         <span className="pill">VIN</span>
       </div>
@@ -58,28 +51,38 @@ export default function VinLookupCard({ decoded, setDecoded, vin, setVin }: Prop
         <input
           value={vin}
           onChange={(e) => setVin(e.target.value)}
-          placeholder="VIN (17 caractères)"
-          style={{ flex: 1, minWidth: 260 }}
+          placeholder={t.vinPlaceholder}
+          style={{ flex: 1 }}
         />
-        <button onClick={lookup} disabled={status === "loading"}>
-          {status === "loading" ? "Décodage…" : "Décoder"}
+        <button onClick={decode} disabled={status === "loading"}>
+          {status === "loading" ? (t.decode + "…") : t.decode}
         </button>
       </div>
 
-      {error && <div className="muted danger" style={{ marginTop: 10 }}>{error}</div>}
-
-      {decoded && (
-        <div style={{ marginTop: 12, padding: 12, borderRadius: 12, border: "1px solid var(--border)", background: "rgba(2,6,23,.25)" }}>
-          <div style={{ fontWeight: 900, fontSize: 18 }}>
-            {decoded.year} {decoded.make} {decoded.model} {decoded.trim ? `(${decoded.trim})` : ""}
+      <div style={{ marginTop: 12, minHeight: 220 }}>
+        {decoded ? (
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 18 }}>
+              {decoded.year} {decoded.make} {decoded.model}
+            </div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              {decoded.trim ? `Trim: ${decoded.trim}` : null}
+            </div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              {decoded.bodyClass ? `Body: ${decoded.bodyClass}` : null}
+            </div>
+            <div className="muted" style={{ marginTop: 6 }}>
+              {decoded.fuelType ? `Fuel: ${decoded.fuelType}` : null}
+            </div>
           </div>
-          <div className="muted" style={{ marginTop: 6, fontSize: 13 }}>
-            {decoded.bodyClass ? <>Body: {decoded.bodyClass} · </> : null}
-            {decoded.driveType ? <>Drive: {decoded.driveType} · </> : null}
-            {decoded.engine?.fuelType ? <>Fuel: {decoded.engine.fuelType}</> : null}
+        ) : (
+          <div className="muted" style={{ marginTop: 20 }}>
+            {status === "error"
+              ? (isFR(t) ? "Erreur de décodage VIN." : "VIN decode error.")
+              : (isFR(t) ? "Entre un VIN puis clique Décoder." : "Enter a VIN and click Decode.")}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
