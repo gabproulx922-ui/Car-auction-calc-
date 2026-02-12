@@ -24,9 +24,14 @@ export type DealInput = {
   fee: FeeConfig;
   tax: TaxConfig;
 
-  exitValue: number;           // exit value in DISPLAY currency
-  fixedCosts: number;          // repair + transport + misc in DISPLAY currency
-  targetProfit: number;        // profit target in DISPLAY currency
+  exitValue: number;           
+  mileageKm: number;
+  conditionGrade: \"A\" | \"B\" | \"C\" | \"D\";
+// exit value in DISPLAY currency
+  partsCost: number;
+  transportCost: number;
+  timeCost: number;          // repair + transport + misc in DISPLAY currency
+  profitPct: number;        // profit target in DISPLAY currency
 };
 
 export type DecodedVehicle = {
@@ -62,6 +67,7 @@ export type CalcResult = {
 };
 
 export type LadderRow = {
+  profitPct: number;
   targetProfit: number;
   maxBid: number;
   totalFees: number;

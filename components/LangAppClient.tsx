@@ -38,8 +38,12 @@ export default function LangAppClient({ lang }: { lang: Lang }) {
     fee: { region: "CA", bidMode: "PRE_BID", payment: "SECURED" },
     tax: { province: "QC", apply: true, taxBase: "SALE_ONLY" },
     exitValue: 12000, // auto-estimated
-    fixedCosts: 0,
-    targetProfit: 1500,
+    mileageKm: 120000,
+    conditionGrade: "B",
+    partsCost: 0,
+    transportCost: 0,
+    timeCost: 0,
+    profitPct: 0.3,
   });
 
   const [fxStatus, setFxStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
@@ -54,8 +58,8 @@ export default function LangAppClient({ lang }: { lang: Lang }) {
 
   // Auto-estimate exit value when VIN/currency/fx changes
   useEffect(() => {
-    setInput((prev) => ({ ...prev, exitValue: estimateExitValue(decoded, prev.currency, prev.fxUSDCAD) }));
-  }, [decoded, input.currency, input.fxUSDCAD]);
+    setInput((prev) => ({ ...prev, exitValue: estimateExitValue(decoded, prev.currency, prev.fxUSDCAD, prev.mileageKm, prev.conditionGrade) }));
+  }, [decoded, input.currency, input.fxUSDCAD, input.mileageKm, input.conditionGrade]);
 
   function recalc() {
     const r = computeMaxBid(input);

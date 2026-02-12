@@ -1,126 +1,138 @@
 "use client";
 
+import type { CalcResult, DealInput, DecodedVehicle, LadderRow } from "@/lib/types";
 import { fmt } from "@/lib/currency";
-import type { DealInput, CalcResult, LadderRow } from "@/lib/types";
+import type { TDict } from "@/lib/i18n";
+import { estimateExitValue } from "@/lib/estimate_exit_value";
 
 type Props = {
+  t: TDict;
   input: DealInput;
-  setInput: (next: DealInput) => void;
+  setInput: (fn: (prev: DealInput) => DealInput) => void;
+  decoded: DecodedVehicle | null;
   result: CalcResult | null;
   ladder: LadderRow[];
   onRecalc: () => void;
   onSave: () => void;
 };
 
-export default function BidEngineCard({ input, setInput, result, ladder, onRecalc, onSave }: Props) {
+function isFR(t: TDict) {
+  return t.notesTitle === "Notes MVP";
+}
+
+function pctLabel(p: number, t: TDict) {
+  const v = Math.round(p * 100);
+  return isFR(t) ? `${v} %` : `${v}%`;
+}
+
+export default function BidEngineCard({ t, input, setInput, decoded, result, ladder, onRecalc, onSave }: Props) {
+  const estExit = estimateExitValue(decoded, input.currency, input.fxUSDCAD, input.mileageKm, input.conditionGrade);
+
+  // keep in state (no manual entry)
+  if (input.exitValue !== estExit) {
+    Promise.resolve().then(() => setInput((p) => ({ ...p, exitValue: estExit })));
+  }
+
+  const totalFixed = (input.partsCost || 0) + (input.transportCost || 0) + (input.timeCost || 0);
+
   return (
     <div className="card">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>2) Bid engine</div>
-          <div className="muted" style={{ fontSize: 13 }}>
-            Copart Canada fees + QC taxes + max bid (iterative)
-          </div>
+          <div style={{ fontWeight: 800, fontSize: 16 }}>{t.bidTitle}</div>
+          <div className="muted" style={{ fontSize: 13 }}>{t.bidSubtitle}</div>
         </div>
         <span className="pill">Pre-bid • Secured</span>
       </div>
 
-      <div className="grid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", marginTop: 12 }}>
-        <label>
-          Exit value ({input.currency})
-          <input
-            type="number"
-            value={input.exitValue || ""}
-            onChange={(e) => setInput({ ...input, exitValue: Number(e.target.value) || 0 })}
-            style={{ width: "100%" }}
-            placeholder="ex: 12000"
-          />
-        </label>
+      <div className="grid" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 12 }}>
+        <div>
+          <label>{t.estExitValue} ({input.currency})</label>
+          <input value={String(estExit)} readOnly />
+        </div>
 
-        <label>
-          Coûts fixes ({input.currency})
+        <div>
+          <label>{t.partsCost} ({input.currency})</label>
           <input
-            type="number"
-            value={input.fixedCosts || ""}
-            onChange={(e) => setInput({ ...input, fixedCosts: Number(e.target.value) || 0 })}
-            style={{ width: "100%" }}
-            placeholder="ex: 2500"
+            value={String(input.partsCost ?? "")}
+            onChange={(e) => setInput((p) => ({ ...p, partsCost: Number(e.target.value) || 0 }))}
+            placeholder={isFR(t) ? "ex: 800" : "e.g. 800"}
           />
-        </label>
+        </div>
 
-        <label>
-          Profit cible ({input.currency})
+        <div>
+          <label>{t.transportCost} ({input.currency})</label>
           <input
-            type="number"
-            value={input.targetProfit || ""}
-            onChange={(e) => setInput({ ...input, targetProfit: Number(e.target.value) || 0 })}
-            style={{ width: "100%" }}
-            placeholder="ex: 1500"
+            value={String(input.transportCost ?? "")}
+            onChange={(e) => setInput((p) => ({ ...p, transportCost: Number(e.target.value) || 0 }))}
+            placeholder={isFR(t) ? "ex: 1200" : "e.g. 1200"}
           />
-        </label>
+        </div>
+
+        <div>
+          <label>{t.timeCost} ({input.currency})</label>
+          <input
+            value={String(input.timeCost ?? "")}
+            onChange={(e) => setInput((p) => ({ ...p, timeCost: Number(e.target.value) || 0 }))}
+            placeholder={isFR(t) ? "ex: 600" : "e.g. 600"}
+          />
+        </div>
+
+        <div>
+          <label>{t.profitPct}</label>
+          <select
+            value={String(input.profitPct)}
+            onChange={(e) => setInput((p) => ({ ...p, profitPct: Number(e.target.value) }))}
+          >
+            <option value="0.2">{pctLabel(0.2, t)}</option>
+            <option value="0.3">{pctLabel(0.3, t)}</option>
+            <option value="0.4">{pctLabel(0.4, t)}</option>
+          </select>
+        </div>
+
+        <div>
+          <label>{isFR(t) ? "Total coûts fixes" : "Total fixed costs"} ({input.currency})</label>
+          <input value={String(totalFixed)} readOnly />
+        </div>
       </div>
 
       <div className="row" style={{ marginTop: 12 }}>
-        <button onClick={onRecalc}>Calculer</button>
-        <button onClick={onSave} disabled={!result}>Sauvegarder dans Deal Queue</button>
-        <div style={{ marginLeft: "auto" }}>
-          <div className="muted" style={{ fontSize: 12 }}>Max Bid</div>
-          <div className="kpi">{fmt(result?.maxBid ?? 0, input.currency)}</div>
+        <button onClick={onRecalc}>{t.calculate}</button>
+        <button onClick={onSave}>{t.saveDeal}</button>
+
+        <div style={{ marginLeft: "auto", textAlign: "right" }}>
+          <div className="muted" style={{ fontSize: 12 }}>{t.maxBid}</div>
+          <div style={{ fontWeight: 900, fontSize: 26 }}>
+            {result ? fmt(result.maxBid, input.currency) : fmt(0, input.currency)}
+          </div>
         </div>
       </div>
-
-      {result && (
-        <div className="grid" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", marginTop: 12 }}>
-          <div style={{ padding: 10, border: "1px solid var(--border)", borderRadius: 14 }}>
-            <div className="muted" style={{ fontSize: 12 }}>Fees (total)</div>
-            <div style={{ fontWeight: 900, fontSize: 18 }}>{fmt(result.fees.total, input.currency)}</div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-              Gate {fmt(result.fees.gateFee, input.currency)} · Env {fmt(result.fees.environmentalFee, input.currency)} · Buyer {fmt(result.fees.buyerFee, input.currency)} · VBF {fmt(result.fees.virtualBidFee, input.currency)}
-            </div>
-          </div>
-          <div style={{ padding: 10, border: "1px solid var(--border)", borderRadius: 14 }}>
-            <div className="muted" style={{ fontSize: 12 }}>Taxes (total)</div>
-            <div style={{ fontWeight: 900, fontSize: 18 }}>{fmt(result.taxes.total, input.currency)}</div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-              GST {fmt(result.taxes.gst, input.currency)} · QST {fmt(result.taxes.qst, input.currency)}
-            </div>
-          </div>
-          <div style={{ padding: 10, border: "1px solid var(--border)", borderRadius: 14 }}>
-            <div className="muted" style={{ fontSize: 12 }}>Solver</div>
-            <div style={{ fontWeight: 900, fontSize: 18 }}>{result.iterations} itérations</div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-              Résout fees(bid) + taxes(bid) automatiquement.
-            </div>
-          </div>
-        </div>
-      )}
 
       <div style={{ marginTop: 14 }}>
-        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Profit ladder (Top 5)</div>
-        <div style={{ overflowX: "auto" }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Profit</th>
-                <th>Max bid</th>
-                <th>Fees</th>
-                <th>Taxes</th>
+        <div className="muted" style={{ fontSize: 12 }}>{t.profitLadder}</div>
+        <table style={{ marginTop: 8 }}>
+          <thead>
+            <tr>
+              <th>{isFR(t) ? "PROFIT (%)" : "PROFIT (%)"}</th>
+              <th>{t.colProfit}</th>
+              <th>{t.colMaxBid}</th>
+              <th>{t.colFees}</th>
+              <th>{t.colTaxes}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ladder.map((r: any, idx) => (
+              <tr key={idx}>
+                <td style={{ fontWeight: 800 }}>{pctLabel(r.profitPct ?? 0, t)}</td>
+                <td style={{ fontWeight: 800 }}>{fmt(r.profitTarget, input.currency)}</td>
+                <td style={{ fontWeight: 900 }}>{fmt(r.maxBid, input.currency)}</td>
+                <td>{fmt(r.fees, input.currency)}</td>
+                <td>{fmt(r.taxes, input.currency)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {ladder.map((r) => (
-                <tr key={r.targetProfit}>
-                  <td>{fmt(r.targetProfit, input.currency)}</td>
-                  <td style={{ fontWeight: 800 }}>{fmt(r.maxBid, input.currency)}</td>
-                  <td>{fmt(r.totalFees, input.currency)}</td>
-                  <td>{fmt(r.totalTaxes, input.currency)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
-
     </div>
   );
 }
