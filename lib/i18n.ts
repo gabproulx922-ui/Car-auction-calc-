@@ -1,6 +1,63 @@
 export type Lang = "fr" | "en";
 
-export const I18N = {
+export type TDict = {
+  settingsTitle: string;
+  settingsSubtitle: string;
+
+  currency: string;
+  fx: string;
+  fxAuto: string;
+  provinceTaxes: string;
+  taxes: string;
+  taxBase: string;
+  bidMode: string;
+  payment: string;
+
+  supabaseTitle: string;
+  supabaseSubtitle: string;
+  emailPlaceholder: string;
+  sendLink: string;
+  signedOut: string;
+  signedIn: string;
+  signOut: string;
+  supabaseMissing: string;
+
+  vinTitle: string;
+  vinSubtitle: string;
+  vinPlaceholder: string;
+  decode: string;
+
+  bidTitle: string;
+  bidSubtitle: string;
+  estExitValue: string;
+  mileage: string;
+  condition: string;
+
+  partsCost: string;
+  transportCost: string;
+  timeCost: string;
+  profitPct: string;
+
+  calculate: string;
+  saveDeal: string;
+  maxBid: string;
+  profitLadder: string;
+  colProfit: string;
+  colMaxBid: string;
+  colFees: string;
+  colTaxes: string;
+
+  dealQueueTitle: string;
+  mode: string;
+  refresh: string;
+  clear: string;
+  delete: string;
+  noDeals: string;
+
+  notesTitle: string;
+};
+
+export const I18N: Record<Lang, TDict> = {
   fr: {
     settingsTitle: "Paramètres",
     settingsSubtitle: "Défaut: Copart Canada • Pre-bid • Secured • Taxes Québec",
@@ -33,10 +90,12 @@ export const I18N = {
     estExitValue: "Valeur de sortie estimée",
     mileage: "Kilométrage",
     condition: "Condition",
+
     partsCost: "Pièces",
     transportCost: "Transport",
     timeCost: "Temps (main-d’œuvre)",
     profitPct: "Profit",
+
     calculate: "Calculer",
     saveDeal: "Sauvegarder dans Deal Queue",
     maxBid: "Bid max",
@@ -87,10 +146,12 @@ export const I18N = {
     estExitValue: "Estimated exit value",
     mileage: "Mileage",
     condition: "Condition",
+
     partsCost: "Parts",
     transportCost: "Transport",
     timeCost: "Time cost",
     profitPct: "Profit",
+
     calculate: "Calculate",
     saveDeal: "Save to Deal Queue",
     maxBid: "Max bid",
@@ -109,7 +170,6 @@ export const I18N = {
 
     notesTitle: "MVP notes",
   },
-} as const;
+};
 
-export type TDict = (typeof I18N)["fr"];
 export const t = (lang: Lang): TDict => I18N[lang];
